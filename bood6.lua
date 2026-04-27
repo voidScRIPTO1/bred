@@ -551,14 +551,13 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 end)
 
--- Цвета для ролей
 local COLORS = {
     Innocent = Color3.fromRGB(50, 205, 50),   -- зелёный
     Murderer = Color3.fromRGB(220, 40, 40),   -- красный
     Sheriff = Color3.fromRGB(40, 120, 255),   -- синий
 }
 
-local FILL_ALPHA    = 0.5  -- прозрачность заливки
+local FILL_ALPHA = 0.5
 local OUTLINE_ALPHA = 0
 
 local HL_TAG = "_WH"
@@ -571,7 +570,6 @@ local weaponKeywords = {
     { pattern = "knife", priority = 1, color = COLORS.Murderer },
 }
 
--- Флаги для ESP
 local ESPFlags = {
     All = false,
     Murderer = false,
@@ -579,7 +577,6 @@ local ESPFlags = {
     Innocent = false,
 }
 
--- Определение цвета исходя из оружия игрока (манипуляция ролями через оружие)
 local function detectWeaponColor(character, player)
     local bestColor = nil
     local bestPriority = 0
@@ -769,20 +766,16 @@ local function hookPlayer(player)
     end)
 end
 
+Players.PlayerRemoving:Connect(clearHighlight)
+
 for _, player in pairs(Players:GetPlayers()) do
     task.spawn(hookPlayer, player)
 end
 
 Players.PlayerAdded:Connect(hookPlayer)
 
-Players.PlayerRemoving:Connect(clearHighlight)
 
--- UI раздел ESP 
-
-local ESPTab = Window:CreateTab("ESP", 4483362458)
-ESPTab:CreateSection("Player ESP")
-
--- Вспомогательная функция для включения/выключения фильтров
+-- Вспомогательная функция для включения только одного фильтра
 local function setOnlyThisFlag(flagName)
     for key in pairs(ESPFlags) do
         ESPFlags[key] = false
@@ -790,7 +783,12 @@ local function setOnlyThisFlag(flagName)
     ESPFlags[flagName] = true
 end
 
--- Все игроки
+
+-- === ЧАСТЬ СОЗДАНИЯ UI: ВКЛАДКА ESP ===
+
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+ESPTab:CreateSection("Player ESP")
+
 ESPTab:CreateToggle({
     Name = "Highlight All Players",
     CurrentValue = false,
@@ -804,7 +802,6 @@ ESPTab:CreateToggle({
     end
 })
 
--- ONLY Murderer
 ESPTab:CreateToggle({
     Name = "Highlight Murderer",
     CurrentValue = false,
@@ -818,7 +815,6 @@ ESPTab:CreateToggle({
     end
 })
 
--- ONLY Sheriff
 ESPTab:CreateToggle({
     Name = "Highlight Sheriff",
     CurrentValue = false,
@@ -832,7 +828,6 @@ ESPTab:CreateToggle({
     end
 })
 
--- ONLY Innocent
 ESPTab:CreateToggle({
     Name = "Highlight Innocent",
     CurrentValue = false,
@@ -846,7 +841,7 @@ ESPTab:CreateToggle({
     end
 })
 
--- Запускаем обновление ESP в RenderStepped, чтобы быть актуальными 
+-- Обновление ESP каждый кадр
 RunService.RenderStepped:Connect(function()
     for player, data in pairs(trackedData) do
         if data.character then
