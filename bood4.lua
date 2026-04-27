@@ -573,25 +573,27 @@ local ESPHighlights = {}
 
 -- Определение роли игрока (пример для MM2 — подстройте под игру)
 local function getPlayerRole(player)
-  if not player.Character then return "Unknown" end
-  local backpack = player:FindFirstChildOfClass("Backpack")
-  local char = player.Character
+    if not player or not player.Character then return "Unknown" end
 
-  local function hasItem(container, keyword)
-    if not container then return false end
-    for _, item in pairs(container:GetChildren()) do
-      if item.Name:lower():find(keyword) then return true end
+    local playerGui = player:FindFirstChildOfClass("PlayerGui")
+    if playerGui then
+        local clientGui = playerGui:FindFirstChild("Client")
+        if clientGui then
+            local roleValue = clientGui:FindFirstChild("Role")
+            if roleValue and roleValue:IsA("StringValue") then
+                local role = roleValue.Value
+                -- Возвращаем одну из стандартных ролей
+                if role == "Murderer" then
+                    return "Murderer"
+                elseif role == "Sheriff" then
+                    return "Sheriff"
+                elseif role == "Innocent" then
+                    return "Innocent"
+                end
+            end
+        end
     end
-    return false
-  end
-
-  if hasItem(backpack, "knife") or hasItem(char, "knife") then
-    return "Murderer"
-  elseif hasItem(backpack, "gun") or hasItem(char, "gun") then
-    return "Sheriff"
-  else
-    return "Innocent"
-  end
+    return "Unknown"
 end
 
 local function clearESP(player)
