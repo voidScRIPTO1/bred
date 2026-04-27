@@ -551,159 +551,306 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 end)
 
--- ESP Section with role-based highlighting (Murder, Sheriff, Innocent)
-
--- (Пример вставки в ваш скрипт после создания окна и других базовых функций)
-
-local ESPColors = {
-  Default = Color3.fromRGB(0, 170, 255),   -- синий — все игроки
-  Murderer = Color3.fromRGB(255, 0, 0),    -- красный — убийца
-  Sheriff = Color3.fromRGB(0, 100, 255),   -- синий — шериф
-  Innocent = Color3.fromRGB(0, 255, 0)     -- зеленый — невинный
+-- Цвета для ролей
+local COLORS = {
+    Innocent = Color3.fromRGB(50, 205, 50),   -- зелёный
+    Murderer = Color3.fromRGB(220, 40, 40),   -- красный
+    Sheriff = Color3.fromRGB(40, 120, 255),   -- синий
 }
 
-local ESPStates = {
-  All = false,
-  Murderer = false,
-  Sheriff = false,
-  Innocent = false
+local FILL_ALPHA    = 0.5  -- прозрачность заливки
+local OUTLINE_ALPHA = 0
+
+local HL_TAG = "_WH"
+local BB_TAG = "_WBB"
+
+local trackedData = {}
+
+local weaponKeywords = {
+    { pattern = "gun",   priority = 2, color = COLORS.Sheriff },
+    { pattern = "knife", priority = 1, color = COLORS.Murderer },
 }
 
-local ESPHighlights = {}
+-- Флаги для ESP
+local ESPFlags = {
+    All = false,
+    Murderer = false,
+    Sheriff = false,
+    Innocent = false,
+}
 
--- Определение роли игрока (пример для MM2 — подстройте под игру)
-local function getPlayerRole(player)
-    if not player or not player.Character then return "Unknown" end
+-- Определение цвета исходя из оружия игрока (манипуляция ролями через оружие)
+local function detectWeaponColor(character, player)
+    local bestColor = nil
+    local bestPriority = 0
 
-    local playerGui = player:FindFirstChildOfClass("PlayerGui")
-    if playerGui then
-        local clientGui = playerGui:FindFirstChild("Client")
-        if clientGui then
-            local roleValue = clientGui:FindFirstChild("Role")
-            if roleValue and roleValue:IsA("StringValue") then
-                local role = roleValue.Value
-                -- Возвращаем одну из стандартных ролей
-                if role == "Murderer" then
-                    return "Murderer"
-                elseif role == "Sheriff" then
-                    return "Sheriff"
-                elseif role == "Innocent" then
-                    return "Innocent"
-                end
+    local function checkTool(tool)
+        if not tool:IsA("Tool") then return end
+        local name = tool.Name:lower()
+        for _, entry in ipairs(weaponKeywords) do
+            if name:find(entry.pattern) and entry.priority > bestPriority then
+                bestPriority = entry.priority
+                bestColor = entry.color
             end
         end
     end
-    return "Unknown"
-end
 
-local function clearESP(player)
-  if ESPHighlights[player] then
-    for _, h in pairs(ESPHighlights[player]) do
-      if h and h.Parent then h:Destroy() end
+    for _, child in pairs(character:GetChildren()) do
+        checkTool(child)
     end
-    ESPHighlights[player] = nil
-  end
+
+    local back = player:FindFirstChildOfClass("Backpack")
+    if back then
+        for _, item in pairs(back:GetChildren()) do
+            checkTool(item)
+        end
+    end
+
+    return bestColor or COLORS.Innocent
 end
 
-local function applyESP(player, color)
-  if not player.Character or ESPHighlights[player] then return end
-  if player == game.Players.LocalPlayer then return end
+local function getOrMakeHighlight(character)
+    local old = character:FindFirstChild(HL_TAG)
+    if old and old:IsA("Highlight") then return old end
+    if old then old:Destroy() end
 
-  local highlight = Instance.new("Highlight")
-  highlight.Name = "ESP_Highlight"
-  highlight.FillColor = color
-  highlight.OutlineColor = color
-  highlight.FillTransparency = 0.5
-  highlight.OutlineTransparency = 0
-  highlight.Parent = player.Character
+    local hl = Instance.new("Highlight")
+    hl.Name = HL_TAG
+    hl.Adornee = character
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.FillTransparency = FILL_ALPHA
+    hl.OutlineTransparency = OUTLINE_ALPHA
+    hl.FillColor = COLORS.Innocent
+    hl.OutlineColor = COLORS.Innocent
+    hl.Parent = character
 
-  ESPHighlights[player] = {highlight}
+    return hl
 end
 
-local function updateESP()
-  for _, player in pairs(game.Players:GetPlayers()) do
-    local role = getPlayerRole(player)
-    if ESPStates.All or 
-       (ESPStates.Murderer and role == "Murderer") or
-       (ESPStates.Sheriff and role == "Sheriff") or
-       (ESPStates.Innocent and role == "Innocent") then
-      local color = ESPColors.Default
-      if role == "Murderer" then color = ESPColors.Murderer
-      elseif role == "Sheriff" then color = ESPColors.Sheriff
-      elseif role == "Innocent" then color = ESPColors.Innocent end
-      applyESP(player, color)
+local function getOrMakeBillboard(character, playerName)
+    local head = character:FindFirstChild("Head")
+    if not head then return nil end
+
+    local oldBillboard = head:FindFirstChild(BB_TAG)
+    if oldBillboard and oldBillboard:IsA("BillboardGui") then
+        return oldBillboard:FindFirstChild("NameLabel")
+    end
+    if oldBillboard then
+        oldBillboard:Destroy()
+    end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = BB_TAG
+    billboard.Adornee = head
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(0, 140, 0, 26)
+    billboard.StudsOffset = Vector3.new(0, 2.6, 0)
+    billboard.ResetOnSpawn = false
+    billboard.Parent = head
+
+    local label = Instance.new("TextLabel")
+    label.Name = "NameLabel"
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 13
+    label.TextScaled = false
+    label.Text = playerName
+    label.TextColor3 = COLORS.Innocent
+    label.TextStrokeTransparency = 1
+    label.Parent = billboard
+
+    return label
+end
+
+local function clearHighlight(player)
+    local data = trackedData[player]
+    if not data then return end
+
+    if data.conn then
+        data.conn:Disconnect()
+    end
+
+    if data.character then
+        local hl = data.character:FindFirstChild(HL_TAG)
+        if hl then hl:Destroy() end
+        local head = data.character:FindFirstChild("Head")
+        if head then
+            local bb = head:FindFirstChild(BB_TAG)
+            if bb then bb:Destroy() end
+        end
+    end
+
+    trackedData[player] = nil
+end
+
+local function shouldHighlight(color)
+    if ESPFlags.All then
+        return true
+    elseif color == COLORS.Murderer and ESPFlags.Murderer then
+        return true
+    elseif color == COLORS.Sheriff and ESPFlags.Sheriff then
+        return true
+    elseif color == COLORS.Innocent and ESPFlags.Innocent then
+        return true
+    end
+    return false
+end
+
+local function updatePlayer(player)
+    if player == LocalPlayer then
+        clearHighlight(player)
+        return
+    end
+
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        clearHighlight(player)
+        return
+    end
+
+    local color = detectWeaponColor(character, player)
+    if shouldHighlight(color) then
+        local hl = getOrMakeHighlight(character)
+        hl.FillColor = color
+        hl.OutlineColor = color
+
+        local label = getOrMakeBillboard(character, player.DisplayName)
+        if label then
+            label.TextColor3 = color
+        end
+
+        trackedData[player] = trackedData[player] or {}
+        trackedData[player].character = character
     else
-      clearESP(player)
+        clearHighlight(player)
     end
-  end
 end
 
--- Создаём вкладку ESP
+local function hookCharacter(player, character)
+    character:WaitForChild("HumanoidRootPart", 10)
+
+    local conn = RunService.Heartbeat:Connect(function()
+        if not character.Parent then return end
+        updatePlayer(player)
+    end)
+
+    local prev = trackedData[player]
+    if prev then
+        if prev.conn then prev.conn:Disconnect() end
+        if prev.character then
+            local oldHl = prev.character:FindFirstChild(HL_TAG)
+            if oldHl then oldHl:Destroy() end
+
+            local oldHead = prev.character:FindFirstChild("Head")
+            if oldHead then
+                local oldBb = oldHead:FindFirstChild(BB_TAG)
+                if oldBb then oldBb:Destroy() end
+            end
+        end
+    end
+
+    trackedData[player] = { conn = conn, character = character }
+
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent and trackedData[player] and trackedData[player].character == character then
+            conn:Disconnect()
+        end
+    end)
+end
+
+local function hookPlayer(player)
+    if player == LocalPlayer then return end
+    if player.Character then
+        task.spawn(hookCharacter, player, player.Character)
+    end
+    player.CharacterAdded:Connect(function(character)
+        task.spawn(hookCharacter, player, character)
+    end)
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+    task.spawn(hookPlayer, player)
+end
+
+Players.PlayerAdded:Connect(hookPlayer)
+
+Players.PlayerRemoving:Connect(clearHighlight)
+
+-- UI раздел ESP 
+
 local ESPTab = Window:CreateTab("ESP", 4483362458)
 ESPTab:CreateSection("Player ESP")
 
-ESPTab:CreateToggle({
-  Name = "Highlight All Players",
-  CurrentValue = false,
-  Flag = "ESPAllToggle",
-  Callback = function(value)
-    ESPStates.All = value
-    if value then
-      ESPStates.Murderer = false
-      ESPStates.Sheriff = false
-      ESPStates.Innocent = false
+-- Вспомогательная функция для включения/выключения фильтров
+local function setOnlyThisFlag(flagName)
+    for key in pairs(ESPFlags) do
+        ESPFlags[key] = false
     end
-    updateESP()
-  end
+    ESPFlags[flagName] = true
+end
+
+-- Все игроки
+ESPTab:CreateToggle({
+    Name = "Highlight All Players",
+    CurrentValue = false,
+    Flag = "ESPAllToggle",
+    Callback = function(value)
+        if value then
+            setOnlyThisFlag("All")
+        else
+            ESPFlags.All = false
+        end
+    end
 })
 
+-- ONLY Murderer
 ESPTab:CreateToggle({
-  Name = "Highlight Murderer",
-  CurrentValue = false,
-  Flag = "ESPMurdererToggle",
-  Callback = function(value)
-    ESPStates.Murderer = value
-    if value then
-      ESPStates.All = false
+    Name = "Highlight Murderer",
+    CurrentValue = false,
+    Flag = "ESPMurdererToggle",
+    Callback = function(value)
+        if value then
+            setOnlyThisFlag("Murderer")
+        else
+            ESPFlags.Murderer = false
+        end
     end
-    updateESP()
-  end
 })
 
+-- ONLY Sheriff
 ESPTab:CreateToggle({
-  Name = "Highlight Sheriff",
-  CurrentValue = false,
-  Flag = "ESPSheriffToggle",
-  Callback = function(value)
-    ESPStates.Sheriff = value
-    if value then
-      ESPStates.All = false
+    Name = "Highlight Sheriff",
+    CurrentValue = false,
+    Flag = "ESPSheriffToggle",
+    Callback = function(value)
+        if value then
+            setOnlyThisFlag("Sheriff")
+        else
+            ESPFlags.Sheriff = false
+        end
     end
-    updateESP()
-  end
 })
 
+-- ONLY Innocent
 ESPTab:CreateToggle({
-  Name = "Highlight Innocent",
-  CurrentValue = false,
-  Flag = "ESPInnocentToggle",
-  Callback = function(value)
-    ESPStates.Innocent = value
-    if value then
-      ESPStates.All = false
+    Name = "Highlight Innocent",
+    CurrentValue = false,
+    Flag = "ESPInnocentToggle",
+    Callback = function(value)
+        if value then
+            setOnlyThisFlag("Innocent")
+        else
+            ESPFlags.Innocent = false
+        end
     end
-    updateESP()
-  end
 })
 
--- Следим за новыми игроками и за обновлениями
-game.Players.PlayerAdded:Connect(function(player)
-  player.CharacterAdded:Connect(function()
-    task.wait(1)
-    updateESP()
-  end)
-end)
-
-RunService.Heartbeat:Connect(function()
-  updateESP()
+-- Запускаем обновление ESP в RenderStepped, чтобы быть актуальными 
+RunService.RenderStepped:Connect(function()
+    for player, data in pairs(trackedData) do
+        if data.character then
+            updatePlayer(player)
+        end
+    end
 end)
