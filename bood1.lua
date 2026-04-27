@@ -21,8 +21,11 @@ local States = {
     Fly = false,
     InfiniteJump = false,
     GodMode = false,
-    ESP = false,
-    Freecam = false
+    CameraNoclip = false,
+    UnlockCamera = false,
+    Freeze = false,
+    SpamJump = false,
+    InstantRespawn = false
 }
 
 -- Values
@@ -32,6 +35,10 @@ local Values = {
     FlySpeed = 50,
     Gravity = 196.2
 }
+
+-- Saved camera defaults
+local DefaultCameraMinZoom = LocalPlayer.CameraMinZoomDistance
+local DefaultCameraMaxZoom = LocalPlayer.CameraMaxZoomDistance
 
 -- Connections
 local Connections = {}
@@ -87,9 +94,10 @@ local Window = Rayfield:CreateWindow({
 -- ========== PLAYER TAB ==========
 local PlayerTab = Window:CreateTab("Player", 4483362458)
 
+-- ===== Movement Section =====
 PlayerTab:CreateSection("Movement")
 
-local SpeedSlider = PlayerTab:CreateSlider({
+PlayerTab:CreateSlider({
     Name = "Walk Speed",
     Range = {16, 500},
     Increment = 1,
@@ -128,7 +136,7 @@ PlayerTab:CreateToggle({
     end
 })
 
-local JumpSlider = PlayerTab:CreateSlider({
+PlayerTab:CreateSlider({
     Name = "Jump Power",
     Range = {50, 500},
     Increment = 1,
@@ -187,6 +195,27 @@ PlayerTab:CreateToggle({
     end
 })
 
+PlayerTab:CreateToggle({
+    Name = "Spam Jump",
+    CurrentValue = false,
+    Flag = "SpamJumpToggle",
+    Callback = function(Value)
+        States.SpamJump = Value
+        disconnect("SpamJump")
+        if Value then
+            Connections.SpamJump = RunService.Heartbeat:Connect(function()
+                local hum = getHumanoid()
+                if hum then
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end)
+            notify("Spam Jump", "Enabled")
+        else
+            notify("Spam Jump", "Disabled")
+        end
+    end
+})
+
 PlayerTab:CreateSlider({
     Name = "Gravity",
     Range = {0, 500},
@@ -199,6 +228,7 @@ PlayerTab:CreateSlider({
     end
 })
 
+-- ===== Abilities Section =====
 PlayerTab:CreateSection("Abilities")
 
 PlayerTab:CreateToggle({
@@ -226,7 +256,7 @@ PlayerTab:CreateToggle({
     end
 })
 
-local FlySpeedSlider = PlayerTab:CreateSlider({
+PlayerTab:CreateSlider({
     Name = "Fly Speed",
     Range = {10, 300},
     Increment = 5,
@@ -245,7 +275,6 @@ PlayerTab:CreateToggle({
     Callback = function(Value)
         States.Fly = Value
         disconnect("Fly")
-        disconnect("FlyInput")
         
         local root = getRoot()
         local hum = getHumanoid()
@@ -300,6 +329,94 @@ PlayerTab:CreateToggle({
     end
 })
 
+PlayerTab:CreateToggle({
+    Name = "Freeze",
+    CurrentValue = false,
+    Flag = "FreezeToggle",
+    Callback = function(Value)
+        States.Freeze = Value
+        disconnect("Freeze")
+        if Value then
+            Connections.Freeze = RunService.Heartbeat:Connect(function()
+                local root = getRoot()
+                if root then
+                    root.Anchored = true
+                end
+            end)
+            notify("Freeze", "Enabled - You are frozen in place")
+        else
+            local root = getRoot()
+            if root then
+                root.Anchored = false
+            end
+            notify("Freeze", "Disabled")
+        end
+    end
+})
+
+-- ===== Camera Section =====
+PlayerTab:CreateSection("Camera")
+
+PlayerTab:CreateToggle({
+    Name = "Camera Noclip",
+    CurrentValue = false,
+    Flag = "CameraNoclipToggle",
+    Callback = function(Value)
+        States.CameraNoclip = Value
+        if Value then
+            Camera.CameraType = Enum.CameraType.Custom
+            -- Make camera ignore walls (zoom won't be blocked by parts)
+            Connections.CameraNoclip = RunService.RenderStepped:Connect(function()
+                for _, part in pairs(Workspace:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanQuery and not part:IsDescendantOf(getCharacter()) then
+                        -- Не трогаем все части (опасно), только блокируем raycast камеры через свойство:
+                    end
+                end
+            end)
+            -- Альтернативный (стабильный) метод: отключение коллизии камеры
+            disconnect("CameraNoclip")
+            Connections.CameraNoclip = RunService.RenderStepped:Connect(function()
+                local char = getCharacter()
+                if char then
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanQuery = true
+                        end
+                    end
+                end
+            end)
+            -- Простейший рабочий способ: камера проходит сквозь объекты
+            LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
+            notify("Camera Noclip", "Enabled")
+        else
+            disconnect("CameraNoclip")
+            LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
+            notify("Camera Noclip", "Disabled")
+        end
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Unlock Camera",
+    CurrentValue = false,
+    Flag = "UnlockCameraToggle",
+    Callback = function(Value)
+        States.UnlockCamera = Value
+        if Value then
+            DefaultCameraMinZoom = LocalPlayer.CameraMinZoomDistance
+            DefaultCameraMaxZoom = LocalPlayer.CameraMaxZoomDistance
+            LocalPlayer.CameraMinZoomDistance = 0.5
+            LocalPlayer.CameraMaxZoomDistance = 1000
+            notify("Unlock Camera", "Enabled - Free zoom range")
+        else
+            LocalPlayer.CameraMinZoomDistance = DefaultCameraMinZoom
+            LocalPlayer.CameraMaxZoomDistance = DefaultCameraMaxZoom
+            notify("Unlock Camera", "Disabled")
+        end
+    end
+})
+
+-- ===== Health / Respawn Section =====
 PlayerTab:CreateSection("Health")
 
 PlayerTab:CreateButton({
@@ -313,16 +430,8 @@ PlayerTab:CreateButton({
     end
 })
 
-PlayerTab:CreateButton({
-    Name = "Reset Character",
-    Callback = function()
-        local hum = getHumanoid()
-        if hum then hum.Health = 0 end
-    end
-})
-
 PlayerTab:CreateToggle({
-    Name = "God Mode (Re-Anchor Method)",
+    Name = "God Mode",
     CurrentValue = false,
     Flag = "GodModeToggle",
     Callback = function(Value)
@@ -342,244 +451,57 @@ PlayerTab:CreateToggle({
     end
 })
 
--- ========== TELEPORT TAB ==========
-local TeleportTab = Window:CreateTab("Teleport", 4483362458)
-
-TeleportTab:CreateSection("Player Teleport")
-
-local SelectedPlayer = nil
-local function getPlayerList()
-    local list = {}
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            table.insert(list, p.Name)
-        end
-    end
-    return list
-end
-
-local PlayerDropdown = TeleportTab:CreateDropdown({
-    Name = "Select Player",
-    Options = getPlayerList(),
-    CurrentOption = {},
-    MultipleOptions = false,
-    Flag = "PlayerSelect",
-    Callback = function(Option)
-        SelectedPlayer = Option[1]
-    end
-})
-
-TeleportTab:CreateButton({
-    Name = "Refresh Players",
-    Callback = function()
-        PlayerDropdown:Refresh(getPlayerList())
-        notify("Players", "List refreshed")
-    end
-})
-
-TeleportTab:CreateButton({
-    Name = "Teleport to Player",
-    Callback = function()
-        if not SelectedPlayer then notify("Error", "No player selected") return end
-        local target = Players:FindFirstChild(SelectedPlayer)
-        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            local root = getRoot()
-            if root then
-                root.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0, 0, 3)
-                notify("Teleport", "Teleported to " .. SelectedPlayer)
-            end
-        end
-    end
-})
-
-TeleportTab:CreateSection("Position")
-
-local SavedPosition = nil
-
-TeleportTab:CreateButton({
-    Name = "Save Current Position",
-    Callback = function()
-        local root = getRoot()
-        if root then
-            SavedPosition = root.CFrame
-            notify("Position", "Position saved")
-        end
-    end
-})
-
-TeleportTab:CreateButton({
-    Name = "Teleport to Saved Position",
-    Callback = function()
-        if SavedPosition then
-            local root = getRoot()
-            if root then
-                root.CFrame = SavedPosition
-                notify("Teleport", "Teleported to saved position")
-            end
-        else
-            notify("Error", "No saved position")
-        end
-    end
-})
-
-TeleportTab:CreateInput({
-    Name = "Teleport to XYZ (format: x,y,z)",
-    PlaceholderText = "0,50,0",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        local x, y, z = Text:match("(-?%d+%.?%d*),(-?%d+%.?%d*),(-?%d+%.?%d*)")
-        if x and y and z then
-            local root = getRoot()
-            if root then
-                root.CFrame = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
-                notify("Teleport", "Teleported to " .. Text)
-            end
-        else
-            notify("Error", "Invalid format")
-        end
-    end
-})
-
--- ========== VISUALS TAB ==========
-local VisualsTab = Window:CreateTab("Visuals", 4483362458)
-
-VisualsTab:CreateSection("ESP")
-
-local ESPObjects = {}
-
-local function createESP(player)
-    if player == LocalPlayer then return end
-    if ESPObjects[player] then return end
-    
-    local function applyESP(char)
-        if not char then return end
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "ESP_Highlight"
-        highlight.FillColor = Color3.fromRGB(255, 0, 0)
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
-        highlight.Parent = char
-        ESPObjects[player] = highlight
-    end
-    
-    if player.Character then
-        applyESP(player.Character)
-    end
-    
-    player.CharacterAdded:Connect(function(char)
-        if States.ESP then
-            task.wait(0.5)
-            applyESP(char)
-        end
-    end)
-end
-
-local function removeESP()
-    for player, highlight in pairs(ESPObjects) do
-        if highlight then highlight:Destroy() end
-    end
-    ESPObjects = {}
-    
-    for _, p in pairs(Players:GetPlayers()) do
-        if p.Character then
-            local h = p.Character:FindFirstChild("ESP_Highlight")
-            if h then h:Destroy() end
-        end
-    end
-end
-
-VisualsTab:CreateToggle({
-    Name = "Player ESP",
+PlayerTab:CreateToggle({
+    Name = "Instant Respawn",
     CurrentValue = false,
-    Flag = "ESPToggle",
+    Flag = "InstantRespawnToggle",
     Callback = function(Value)
-        States.ESP = Value
+        States.InstantRespawn = Value
+        disconnect("InstantRespawn")
         if Value then
-            for _, player in pairs(Players:GetPlayers()) do
-                createESP(player)
-            end
-            Connections.ESPAdded = Players.PlayerAdded:Connect(function(p)
-                p.CharacterAdded:Connect(function()
-                    task.wait(0.5)
-                    if States.ESP then createESP(p) end
+            Connections.InstantRespawn = LocalPlayer.CharacterAdded:Connect(function(char)
+                local hum = char:WaitForChild("Humanoid")
+                hum.Died:Connect(function()
+                    task.wait(0.1)
+                    LocalPlayer:LoadCharacter()
                 end)
             end)
-            notify("ESP", "Enabled")
-        else
-            disconnect("ESPAdded")
-            removeESP()
-            notify("ESP", "Disabled")
-        end
-    end
-})
-
-VisualsTab:CreateSection("Camera")
-
-VisualsTab:CreateSlider({
-    Name = "Field of View",
-    Range = {1, 120},
-    Increment = 1,
-    Suffix = "°",
-    CurrentValue = 70,
-    Flag = "FOV",
-    Callback = function(Value)
-        Camera.FieldOfView = Value
-    end
-})
-
-VisualsTab:CreateToggle({
-    Name = "Freecam (B to toggle)",
-    CurrentValue = false,
-    Flag = "FreecamToggle",
-    Callback = function(Value)
-        States.Freecam = Value
-        if Value then
-            notify("Freecam", "Enabled")
-        else
-            notify("Freecam", "Disabled")
-        end
-    end
-})
-
--- ========== MISC TAB ==========
-local MiscTab = Window:CreateTab("Misc", 4483362458)
-
-MiscTab:CreateSection("Server")
-
-MiscTab:CreateButton({
-    Name = "Rejoin Server",
-    Callback = function()
-        local TS = game:GetService("TeleportService")
-        TS:Teleport(game.PlaceId, LocalPlayer)
-    end
-})
-
-MiscTab:CreateButton({
-    Name = "Server Hop",
-    Callback = function()
-        local TS = game:GetService("TeleportService")
-        local HttpService = game:GetService("HttpService")
-        local servers = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-        local data = HttpService:JSONDecode(servers)
-        for _, server in ipairs(data.data) do
-            if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                TS:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
-                return
+            -- Подключаем на текущего персонажа
+            local hum = getHumanoid()
+            if hum then
+                Connections.InstantRespawnDied = hum.Died:Connect(function()
+                    task.wait(0.1)
+                    if States.InstantRespawn then
+                        LocalPlayer:LoadCharacter()
+                    end
+                end)
             end
+            notify("Instant Respawn", "Enabled")
+        else
+            disconnect("InstantRespawnDied")
+            notify("Instant Respawn", "Disabled")
         end
-        notify("ServerHop", "No servers found")
     end
 })
 
-MiscTab:CreateSection("Info")
+PlayerTab:CreateButton({
+    Name = "Respawn",
+    Callback = function()
+        local success, err = pcall(function()
+            LocalPlayer:LoadCharacter()
+        end)
+        if not success then
+            local hum = getHumanoid()
+            if hum then hum.Health = 0 end
+        end
+        notify("Respawn", "Character respawned")
+    end
+})
 
-MiscTab:CreateLabel("Place ID: " .. game.PlaceId)
-MiscTab:CreateLabel("Player: " .. LocalPlayer.Name)
+-- ===== Reset =====
+PlayerTab:CreateSection("Reset")
 
-MiscTab:CreateSection("Reset")
-
-MiscTab:CreateButton({
+PlayerTab:CreateButton({
     Name = "Disable All Features",
     Callback = function()
         for name, _ in pairs(Connections) do
@@ -593,50 +515,39 @@ MiscTab:CreateButton({
             hum.WalkSpeed = 16
             hum.JumpPower = 50
         end
-        Workspace.Gravity = 196.2
-        Camera.FieldOfView = 70
         local root = getRoot()
         if root then
+            root.Anchored = false
             if root:FindFirstChild("FlyBV") then root.FlyBV:Destroy() end
             if root:FindFirstChild("FlyBG") then root.FlyBG:Destroy() end
         end
-        removeESP()
+        Workspace.Gravity = 196.2
+        LocalPlayer.CameraMinZoomDistance = DefaultCameraMinZoom
+        LocalPlayer.CameraMaxZoomDistance = DefaultCameraMaxZoom
+        LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
         notify("Reset", "All features disabled")
-    end
-})
-
--- ========== SETTINGS TAB ==========
-local SettingsTab = Window:CreateTab("Settings", 4483362458)
-
-SettingsTab:CreateSection("UI")
-
-SettingsTab:CreateButton({
-    Name = "Destroy UI",
-    Callback = function()
-        Rayfield:Destroy()
-    end
-})
-
-SettingsTab:CreateKeybind({
-    Name = "Toggle UI",
-    CurrentKeybind = "K",
-    HoldToInteract = false,
-    Flag = "ToggleUI",
-    Callback = function()
-        Rayfield:Toggle()
     end
 })
 
 -- Reapply on character respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
+    local hum = char:WaitForChild("Humanoid")
     if States.SpeedHack then
-        local hum = char:WaitForChild("Humanoid")
         hum.WalkSpeed = Values.WalkSpeed
     end
     if States.JumpHack then
-        local hum = char:WaitForChild("Humanoid")
+        hum.UseJumpPower = true
         hum.JumpPower = Values.JumpPower
+    end
+    if States.InstantRespawn then
+        disconnect("InstantRespawnDied")
+        Connections.InstantRespawnDied = hum.Died:Connect(function()
+            task.wait(0.1)
+            if States.InstantRespawn then
+                LocalPlayer:LoadCharacter()
+            end
+        end)
     end
 end)
 
