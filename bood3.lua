@@ -551,6 +551,157 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 end)
 
-Rayfield:LoadConfiguration()
+-- ESP Section with role-based highlighting (Murder, Sheriff, Innocent)
 
-notify("Universal Hub", "Loaded successfully!")
+-- (Пример вставки в ваш скрипт после создания окна и других базовых функций)
+
+local ESPColors = {
+  Default = Color3.fromRGB(0, 170, 255),   -- синий — все игроки
+  Murderer = Color3.fromRGB(255, 0, 0),    -- красный — убийца
+  Sheriff = Color3.fromRGB(0, 100, 255),   -- синий — шериф
+  Innocent = Color3.fromRGB(0, 255, 0)     -- зеленый — невинный
+}
+
+local ESPStates = {
+  All = false,
+  Murderer = false,
+  Sheriff = false,
+  Innocent = false
+}
+
+local ESPHighlights = {}
+
+-- Определение роли игрока (пример для MM2 — подстройте под игру)
+local function getPlayerRole(player)
+  if not player.Character then return "Unknown" end
+  local backpack = player:FindFirstChildOfClass("Backpack")
+  local char = player.Character
+
+  local function hasItem(container, keyword)
+    if not container then return false end
+    for _, item in pairs(container:GetChildren()) do
+      if item.Name:lower():find(keyword) then return true end
+    end
+    return false
+  end
+
+  if hasItem(backpack, "knife") or hasItem(char, "knife") then
+    return "Murderer"
+  elseif hasItem(backpack, "gun") or hasItem(char, "gun") then
+    return "Sheriff"
+  else
+    return "Innocent"
+  end
+end
+
+local function clearESP(player)
+  if ESPHighlights[player] then
+    for _, h in pairs(ESPHighlights[player]) do
+      if h and h.Parent then h:Destroy() end
+    end
+    ESPHighlights[player] = nil
+  end
+end
+
+local function applyESP(player, color)
+  if not player.Character or ESPHighlights[player] then return end
+  if player == game.Players.LocalPlayer then return end
+
+  local highlight = Instance.new("Highlight")
+  highlight.Name = "ESP_Highlight"
+  highlight.FillColor = color
+  highlight.OutlineColor = color
+  highlight.FillTransparency = 0.5
+  highlight.OutlineTransparency = 0
+  highlight.Parent = player.Character
+
+  ESPHighlights[player] = {highlight}
+end
+
+local function updateESP()
+  for _, player in pairs(game.Players:GetPlayers()) do
+    local role = getPlayerRole(player)
+    if ESPStates.All or 
+       (ESPStates.Murderer and role == "Murderer") or
+       (ESPStates.Sheriff and role == "Sheriff") or
+       (ESPStates.Innocent and role == "Innocent") then
+      local color = ESPColors.Default
+      if role == "Murderer" then color = ESPColors.Murderer
+      elseif role == "Sheriff" then color = ESPColors.Sheriff
+      elseif role == "Innocent" then color = ESPColors.Innocent end
+      applyESP(player, color)
+    else
+      clearESP(player)
+    end
+  end
+end
+
+-- Создаём вкладку ESP
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+ESPTab:CreateSection("Player ESP")
+
+ESPTab:CreateToggle({
+  Name = "Highlight All Players",
+  CurrentValue = false,
+  Flag = "ESPAllToggle",
+  Callback = function(value)
+    ESPStates.All = value
+    if value then
+      ESPStates.Murderer = false
+      ESPStates.Sheriff = false
+      ESPStates.Innocent = false
+    end
+    updateESP()
+  end
+})
+
+ESPTab:CreateToggle({
+  Name = "Highlight Murderer",
+  CurrentValue = false,
+  Flag = "ESPMurdererToggle",
+  Callback = function(value)
+    ESPStates.Murderer = value
+    if value then
+      ESPStates.All = false
+    end
+    updateESP()
+  end
+})
+
+ESPTab:CreateToggle({
+  Name = "Highlight Sheriff",
+  CurrentValue = false,
+  Flag = "ESPSheriffToggle",
+  Callback = function(value)
+    ESPStates.Sheriff = value
+    if value then
+      ESPStates.All = false
+    end
+    updateESP()
+  end
+})
+
+ESPTab:CreateToggle({
+  Name = "Highlight Innocent",
+  CurrentValue = false,
+  Flag = "ESPInnocentToggle",
+  Callback = function(value)
+    ESPStates.Innocent = value
+    if value then
+      ESPStates.All = false
+    end
+    updateESP()
+  end
+})
+
+-- Следим за новыми игроками и за обновлениями
+game.Players.PlayerAdded:Connect(function(player)
+  player.CharacterAdded:Connect(function()
+    task.wait(1)
+    updateESP()
+  end)
+end)
+
+RunService.Heartbeat:Connect(function()
+  updateESP()
+end)
