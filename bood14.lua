@@ -66,18 +66,23 @@ close.BorderSizePixel = 0
 close.Parent = topbar
 Instance.new("UICorner", close).CornerRadius = UDim.new(0, 4)
 
-local hiddenIcon = Instance.new("TextButton")
-hiddenIcon.Size = UDim2.fromOffset(36, 36)
-hiddenIcon.Position = UDim2.new(0, 12, 1, -50)
-hiddenIcon.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
-hiddenIcon.Text = "◉"
-hiddenIcon.TextSize = 20
-hiddenIcon.TextColor3 = Color3.fromRGB(235, 235, 245)
-hiddenIcon.Font = Enum.Font.GothamBold
-hiddenIcon.Visible = false
-hiddenIcon.BorderSizePixel = 0
-hiddenIcon.Parent = gui
-Instance.new("UICorner", hiddenIcon).CornerRadius = UDim.new(1, 0)
+local showBtn = Instance.new("TextButton")
+showBtn.Size = UDim2.fromOffset(40, 40)
+-- Центрируем по середине экрана
+showBtn.Position = UDim2.new(0.5, -20, 0.5, -20)
+showBtn.AnchorPoint = Vector2.new(0, 0)
+showBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 140)
+showBtn.Text = "▶"
+showBtn.Font = Enum.Font.GothamBold
+showBtn.TextSize = 28
+showBtn.TextColor3 = Color3.fromRGB(230, 230, 255)
+showBtn.Visible = false
+showBtn.AutoButtonColor = false
+showBtn.Parent = gui
+
+local showCorner = Instance.new("UICorner")
+showCorner.CornerRadius = UDim.new(1, 0)
+showCorner.Parent = showBtn
 
 local function createRow(text, y)
 	local row = Instance.new("Frame")
