@@ -1,14 +1,17 @@
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 
-local player = Players.LocalPlayer
+local player = game:GetService("Players").LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Создаем ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "DraggableToggleMenu"
 gui.ResetOnSpawn = false
+gui.DisplayOrder = 9999
+gui.IgnoreGuiInset = true
 gui.Parent = playerGui
+
+-- Далее создание окна и кнопок — как в предыдущем примере
 
 -- Основной фрейм меню
 local main = Instance.new("Frame")
