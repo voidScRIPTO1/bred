@@ -80,53 +80,16 @@ BgGradient.Parent = MainFrame
 
 -- Title (для перетаскивания окна)
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -80, 0, 30)
+Title.Size = UDim2.new(1, -40, 0, 30)
 Title.Position = UDim2.new(0, 20, 0, 20)
 Title.BackgroundTransparency = 1
-Title.Text = "MM2 SCRIPT (VERSION 0.3)"
+Title.Text = "⚡ SYSTEM LOADER v2.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 20
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.ZIndex = 3
 Title.Parent = MainFrame
-
--- Кнопка показа (круглая), появится при скрытии
-local ShowBtn = Instance.new("TextButton")
-ShowBtn.Size = UDim2.new(0, 40, 0, 40)
-ShowBtn.Position = UDim2.new(0.5, -20, 0.8, 0)
-ShowBtn.AnchorPoint = Vector2.new(0, 0)
-ShowBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 140)
-ShowBtn.Text = "▶"
-ShowBtn.Font = Enum.Font.GothamBold
-ShowBtn.TextColor3 = Color3.fromRGB(230, 230, 255)
-ShowBtn.TextSize = 28
-ShowBtn.AutoButtonColor = false
-ShowBtn.ZIndex = 6
-ShowBtn.Visible = false
-ShowBtn.Parent = ScreenGui
-
-local ShowCorner = Instance.new("UICorner")
-ShowCorner.CornerRadius = UDim.new(1, 0)
-ShowCorner.Parent = ShowBtn
-
-ShowBtn.MouseEnter:Connect(function()
-    TweenService:Create(ShowBtn, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(100, 100, 200)}):Play()
-end)
-ShowBtn.MouseLeave:Connect(function()
-    TweenService:Create(ShowBtn, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(70, 70, 140)}):Play()
-end)
-
-ShowBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = true
-    ShowBtn.Visible = false
-end)
-
--- Обработчик кнопки скрытия
-HideBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    ShowBtn.Visible = true
-end)
 
 -- Percent
 local Percent = Instance.new("TextLabel")
@@ -228,7 +191,7 @@ local WarningLabel = Instance.new("TextLabel")
 WarningLabel.Size = UDim2.new(1, -40, 0, 40)
 WarningLabel.Position = UDim2.new(0, 20, 0, 185)
 WarningLabel.BackgroundTransparency = 1
-WarningLabel.Text = "No menu after loading? Try running the script again or use the main account."
+WarningLabel.Text = "No menu in 5 seconds? You may be on an alt. Use your main for full access."
 WarningLabel.TextColor3 = Color3.fromRGB(235, 235, 245)
 WarningLabel.Font = Enum.Font.Gotham
 WarningLabel.TextSize = 14
@@ -238,7 +201,7 @@ WarningLabel.TextYAlignment = Enum.TextYAlignment.Center
 WarningLabel.ZIndex = 3
 WarningLabel.Parent = MainFrame
 
--- Animations
+-- Анимации полосы загрузки
 task.spawn(function()
     while BarFill.Parent do
         BarGradient.Offset = Vector2.new(BarGradient.Offset.X + 0.01, 0)
@@ -270,7 +233,7 @@ task.spawn(function()
     end
 end)
 
--- STAGES загрузки
+-- Стадии загрузки
 local stages = {
     {name = "Initializing system core...", weight = 8},
     {name = "Connecting to server...", weight = 10},
@@ -334,7 +297,7 @@ task.spawn(function()
     if timerConnection then timerConnection:Disconnect() end
     TimerLabel.Text = string.format("⏱ Loaded in %.1f seconds", tick() - startTime)
 
-    -- после загрузки меню остаётся видимым, без закрытия
+    -- Меню остаётся видимым навсегда
 end)
 
 -- ПЕРЕТАСКИВАНИЕ меню по заголовку Title
